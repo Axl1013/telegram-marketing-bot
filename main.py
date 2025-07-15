@@ -19,23 +19,6 @@ import time
 from apscheduler.schedulers.background import BackgroundScheduler
 
 
-def post_to_instagram(image_path, caption):
-    try:
-        cl = Client()
-        cl.load_settings("insta_session.json")
-        cl.login("marketingbotasmr", "Kimvg001")  # gebruik exact zoals bij sessie
-        result = cl.photo_upload(image_path, caption)
-        print("✅ Succesvol gepost op Instagram!")
-        print("📸 Post-ID:", result.dict().get("pk"))
-    except LoginRequired as e:
-        print("❌ Login vereist. Sessie ongeldig?")
-    except PhotoNotUpload as e:
-        print(f"❌ Fout bij uploaden foto: {e}")
-    except Exception as e:
-        print(f"❌ Algemene fout: {e}")
-        
-post_to_instagram("logo.png", "🔥 Testpost via de bot")
-
 def login_and_save_session():
     cl = Client()
     cl.login("marketingbotasmr", "Kimvg001")
@@ -67,6 +50,24 @@ def login_to_instagram():
 
 # Test of de login werkt
 login_to_instagram()
+
+def post_to_instagram(image_path, caption):
+    try:
+        cl = Client()
+        cl.load_settings("insta_session.json")
+        cl.login("marketingbotasmr", "Kimvg001")  # gebruik exact zoals bij sessie
+        result = cl.photo_upload(image_path, caption)
+        print("✅ Succesvol gepost op Instagram!")
+        print("📸 Post-ID:", result.dict().get("pk"))
+    except LoginRequired as e:
+        print("❌ Login vereist. Sessie ongeldig?")
+    except PhotoNotUpload as e:
+        print(f"❌ Fout bij uploaden foto: {e}")
+    except Exception as e:
+        print(f"❌ Algemene fout: {e}")
+        
+post_to_instagram("logo.png", "🔥 Testpost via de bot")
+
 # Functie om een foto te posten
 def post_on_instagram(image_path, caption, cl):
     try:
