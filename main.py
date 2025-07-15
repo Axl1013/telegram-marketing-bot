@@ -24,11 +24,20 @@ def login_to_instagram():
     username = "marketingbotasmr"
     password = "Kimvg001"
 
-    # Log in op Instagram
-    cl.login(username, password)
-    
-    return cl
+    try:
+        # Log in op Instagram
+        cl.login(username, password)
 
+        # Haal gebruikersinformatie op om te controleren of de login succesvol is
+        user_info = cl.user_info(cl.user_id)
+        print(f"Login succesvol! Gebruiker: {user_info.username}")
+        return cl
+    except Exception as e:
+        print(f"Fout bij inloggen: {e}")
+        return None
+
+# Test of de login werkt
+login_to_instagram()
 # Functie om een foto te posten
 def post_on_instagram(image_path, caption, cl):
     try:
