@@ -18,6 +18,7 @@ from instagrapi.exceptions import *
 from apscheduler.schedulers.background import BackgroundScheduler
 from telegram.ext import ConversationHandler
 from PIL import ImageEnhance
+from telegram.constants import ParseMode  # Als je die nog niet hebt geïmporteerd
 
 # 🔑 Laad API-sleutels
 load_dotenv()
@@ -271,6 +272,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(f"Fout: {str(e)}")
         await update.message.reply_text(f"❌ Er ging iets mis:\n{str(e)}")
 
+async def info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = (
+        "ℹ️ *Bot Instructies & Mogelijkheden:*\n\n"
+        "📸 *1. Stuur een promotiefoto met bijschrift:*\n"
+        "– De AI maakt automatisch een Instagram-waardige post.\n\n"
+        "🏷️ *2. Voeg een logo toe (eenmalig):*\n"
+        "– Stuur je logo als foto met bijschrift `logo`\n\n"
+        "🔀 *3. Pas logo-positie aan:*\n"
+        "– Stuur `/logo_links` of `/logo_rechts` om het logo links of rechts onderaan te zetten\n"
+        "– Stuur `/logo_transparant` om het logo transparant te maken\n\n"
+        "🔐 *4. Login met jouw Instagram-account:*\n"
+        "– Stuur `/login gebruikersnaam wachtwoord`\n\n"
+        "🕒 *5. Plan je post:*\n"
+        "– Nadat je een foto hebt gestuurd, kies je zelf het tijdstip voor publicatie\n"
+        "– Gebruik formaat: `DD-MM-YYYY HH:MM`\n\n"
+        "ℹ️ *Deze bot is ideaal voor bedrijven die actief willen zijn op Instagram zonder gedoe!*"
+    )
+    await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
+    
 async def start_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📲 Wat is je Instagram gebruikersnaam?")
     return LOGIN_USERNAME
@@ -392,6 +412,7 @@ async def main():
     bot_app.add_handler(MessageHandler(filters.PHOTO, handle_logo_upload))
     bot_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_schedule_time))
     bot_app.add_handler(CommandHandler("login", handle_login))
+    bot_app.add_handler(CommandHandler("info", info_command))
     logging.info("✅ Bot gestart...")
     await bot_app.run_polling()
     login_handler = ConversationHandler(
