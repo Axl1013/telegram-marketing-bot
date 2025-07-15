@@ -12,13 +12,10 @@ from PIL import Image
 from io import BytesIO
 import json
 from datetime import datetime
-from telegram.ext import CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
+from telegram.ext import CommandHandler
 from instagrapi import Client
 from instagrapi.exceptions import *
 from apscheduler.schedulers.background import BackgroundScheduler
-
-# 🖼️ Logo-bestand
-LOGO_PATH = "logo.png"
 
 # 🔑 Laad API-sleutels
 load_dotenv()
@@ -46,70 +43,101 @@ logging.basicConfig(level=logging.INFO)
 
 # 📦 Context opslag
 user_context = {}
-SCHEDULE_FILE = "scheduled_posts.json"
-
-# 📸 Instagram login en sessiebeheer
-def login_and_save_session():
-    cl = Client()
-    cl.login("marketingbotasmr", "Kimvg001")
-    cl.dump_settings("insta_session.json")
-
-def get_instagram_client():
-    cl = Client()
-    if os.path.exists("insta_session.json"):
-        cl.load_settings("insta_session.json")
-    else:
-        login_and_save_session()
-        cl.load_settings("insta_session.json")
-    return cl
-
-def post_on_instagram(image_path, caption):
-    try:
-        cl = get_instagram_client()
-        cl.photo_upload(image_path, caption)
-        print(f"✅ Post geplaatst op Instagram met caption: {caption}")
-    except Exception as e:
-        print(f"❌ Fout bij posten: {e}")
-
-# 🗓️ Planning
 scheduler = BackgroundScheduler()
 scheduler.start()
 
-def schedule_post(image_path, caption, post_time):
+BASE_PATH = "data"  # 🗂️ Alle gebruikersdata hier
+os.makedirs(BASE_PATH, exist_ok=True)
+
+def get_user_path(user_id):
+    return os.path.join(BASE_PATH, str(user_id))
+
+def get_session_path(user_id):
+    return os.path.join(get_user_path(user_id), "session.json")
+
+def get_logo_path(user_id):
+    return os.path.join(get_user_path(user_id), "logo.png")
+
+def get_schedule_file(user_id):
+    return os.path.join(get_user_path(user_id), "scheduled_posts.json")
+
+def ensure_user_dirs(user_id):
+    os.makedirs(get_user_path(user_id), exist_ok=True)
+
+# 📸 Instagram login en sessiebeheer
+def login_and_save_session(user_id):
+    cl = Client()
+    # ⛔️ LET OP: dit is tijdelijk — vervang dit later met gebruikersinvoer
+    cl.login("marketingbotasmr", "Kimvg001")
+    ensure_user_dirs(user_id)
+    cl.dump_settings(get_session_path(user_id))
+
+def get_instagram_client(user_id):
+    cl = Client()
+    session_file = get_session_path(user_id)
+    if os.path.exists(session_file):
+        cl.load_settings(session_file)
+    else:
+        login_and_save_session(user_id)
+        cl.load_settings(session_file)
+    return cl
+
+def post_on_instagram(image_path, caption, user_id):
+    try:
+        cl = get_instagram_client(user_id)
+        cl.photo_upload(image_path, caption)
+        print(f"✅ Post geplaatst voor user {user_id}")
+    except Exception as e:
+        print(f"❌ Fout bij posten (user {user_id}): {e}")
+
+def schedule_post(image_path, caption, post_time, user_id):
     scheduled_time = datetime.strptime(post_time, "%d-%m-%Y %H:%M")
     time_diff = (scheduled_time - datetime.now()).total_seconds()
     if time_diff > 0:
-        scheduler.add_job(post_on_instagram, 'date', run_date=scheduled_time, args=[image_path, caption])
-        print(f"📅 Post gepland voor {post_time}")
+        scheduler.add_job(post_on_instagram, 'date', run_date=scheduled_time,
+                          args=[image_path, caption, user_id])
+        print(f"📅 Post gepland voor {post_time} (user {user_id})")
     else:
         print("⛔ Tijd ligt in het verleden")
 
-def save_scheduled_post(data):
-    if not os.path.exists(SCHEDULE_FILE):
-        with open(SCHEDULE_FILE, "w") as f:
+def save_scheduled_post(data, user_id):
+    file = get_schedule_file(user_id)
+    ensure_user_dirs(user_id)
+    if not os.path.exists(file):
+        with open(file, "w") as f:
             json.dump([], f)
-    with open(SCHEDULE_FILE, "r") as f:
+    with open(file, "r") as f:
         posts = json.load(f)
     posts.append(data)
-    with open(SCHEDULE_FILE, "w") as f:
+    with open(file, "w") as f:
         json.dump(posts, f, indent=2)
 
 # 🤖 Telegram handlers
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    ensure_user_dirs(user_id)
+    logo_path = get_logo_path(user_id)
+
     if not update.message.caption:
         await update.message.reply_text("⚠️ Stuur een foto met een promotietekst in het bijschrift.")
+        return
+
+    if not os.path.exists(logo_path):
+        await update.message.reply_text("⚠️ Je hebt nog geen logo geüpload. Stuur eerst je logo als foto met bijschrift: `logo`")
         return
 
     promo_text = update.message.caption
     price_keywords = ["korting", "aanbieding", "prijs", "actie", "promo"]
 
-    if any(keyword in promo_text.lower() for keyword in price_keywords):
-        prompt = f"Schrijf een aantrekkelijke Instagram-post in het Nederlands op basis van deze promotie: '{promo_text}'. Voeg relevante hashtags toe en maak het promotioneel, inclusief een prijs of korting."
-    else:
-        prompt = f"Schrijf een aantrekkelijke Instagram-post in het Nederlands op basis van deze promotie: '{promo_text}'. Voeg relevante hashtags toe, zonder een prijs of promotie toe te voegen."
+    prompt = (
+        f"Schrijf een aantrekkelijke Instagram-post in het Nederlands op basis van deze promotie: '{promo_text}'. "
+        f"Voeg relevante hashtags toe en maak het promotioneel, inclusief een prijs of korting."
+        if any(keyword in promo_text.lower() for keyword in price_keywords)
+        else f"Schrijf een aantrekkelijke Instagram-post in het Nederlands op basis van deze promotie: '{promo_text}'. "
+             f"Voeg relevante hashtags toe, zonder een prijs of promotie toe te voegen."
+    )
 
     try:
-        # AI-caption genereren
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
@@ -117,14 +145,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         ai_text = response.choices[0].message.content.strip()
 
-        # Foto ophalen van Telegram
         photo = update.message.photo[-1]
         file = await photo.get_file()
         file_bytes = await file.download_as_bytearray()
         original = Image.open(BytesIO(file_bytes)).convert("RGBA")
 
-        # Logo laden en toevoegen
-        logo = Image.open(LOGO_PATH).convert("RGBA")
+        logo = Image.open(logo_path).convert("RGBA")
         logo = logo.resize((original.width // 2, int(original.height // 10)))
 
         position = (
@@ -133,11 +159,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         original.paste(logo, position, logo)
 
-        # Afbeelding opslaan
-        final_path = "final_image.png"
+        final_path = os.path.join(get_user_path(user_id), "final_image.png")
         original.save(final_path)
 
-        # AI-caption + afbeelding terugsturen naar gebruiker
         with open(final_path, "rb") as f:
             await context.bot.send_photo(
                 chat_id=update.effective_chat.id,
@@ -146,15 +170,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="Markdown"
             )
 
-        # Opslaan in context om later te plannen
-        user_id = update.effective_user.id
         user_context[user_id] = {
             "image_path": final_path,
             "caption": ai_text,
             "chat_id": update.effective_chat.id
         }
 
-        # Vraag tijdstip voor Instagram post
         await update.message.reply_text(
             "🕒 Wanneer wil je dat deze post op Instagram geplaatst wordt?\n"
             "Stuur een tijd in dit formaat: `DD-MM-YYYY HH:MM` (bijv. `17-07-2025 14:30`)",
@@ -177,25 +198,39 @@ async def handle_schedule_time(update: Update, context: ContextTypes.DEFAULT_TYP
         post_data = user_context[user_id]
         post_data["post_time"] = post_time.strftime("%d-%m-%Y %H:%M")
 
-        save_scheduled_post(post_data)
-        schedule_post(post_data["image_path"], post_data["caption"], post_data["post_time"])
+        save_scheduled_post(post_data, user_id)
+        schedule_post(post_data["image_path"], post_data["caption"], post_data["post_time"], user_id)
         del user_context[user_id]
 
-        await update.message.reply_text(
-            f"✅ Post gepland voor {post_time.strftime('%d-%m-%Y %H:%M')}!"
-        )
+        await update.message.reply_text(f"✅ Post gepland voor {post_time.strftime('%d-%m-%Y %H:%M')}!")
 
     except ValueError:
         await update.message.reply_text("❌ Ongeldig formaat. Gebruik `DD-MM-YYYY HH:MM`.")
 
+async def handle_logo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.caption and update.message.caption.strip().lower() == "logo":
+        user_id = update.effective_user.id
+        photo = update.message.photo[-1]
+        file = await photo.get_file()
+        file_bytes = await file.download_as_bytearray()
+
+        ensure_user_dirs(user_id)
+        logo_path = get_logo_path(user_id)
+        with open(logo_path, "wb") as f:
+            f.write(file_bytes)
+
+        await update.message.reply_text("✅ Je logo is opgeslagen en zal voortaan worden toegevoegd aan je posts.")
+    else:
+        await handle_message(update, context)
+
+# 🚀 Start
 async def main():
     bot_app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-    bot_app.add_handler(MessageHandler(filters.PHOTO & filters.Caption(), handle_message))
+    bot_app.add_handler(MessageHandler(filters.PHOTO, handle_logo_upload))
     bot_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_schedule_time))
     logging.info("✅ Bot gestart...")
     await bot_app.run_polling()
 
 if __name__ == "__main__":
     keep_alive()
-    login_and_save_session()
     asyncio.run(main())
