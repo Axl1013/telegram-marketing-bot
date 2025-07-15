@@ -132,6 +132,26 @@ def save_scheduled_post(data, user_id):
     with open(file, "w") as f:
         json.dump(posts, f, indent=2)
 
+def resize_and_crop(image, target_size=1080):
+    # Haal de originele afmetingen op
+    width, height = image.size
+
+    # Bepaal de dimensie van het vierkant (kleinste van de breedte of hoogte)
+    new_dim = min(width, height)
+
+    # Bepaal het bijsnijdgebied (center crop)
+    left = (width - new_dim) / 2
+    top = (height - new_dim) / 2
+    right = (width + new_dim) / 2
+    bottom = (height + new_dim) / 2
+
+    # Snijd het beeld bij en schaala naar de doelgrootte
+    image_cropped = image.crop((left, top, right, bottom))
+    image_resized = image_cropped.resize((target_size, target_size), Image.ANTIALIAS)
+
+    return image_resized
+
+
 # 🤖 Telegram handlers
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -165,30 +185,37 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         ai_text = response.choices[0].message.content.strip()
 
-        photo = update.message.photo[-1]
-        file = await photo.get_file()
-        file_bytes = await file.download_as_bytearray()
-        original = Image.open(BytesIO(file_bytes)).convert("RGBA")
+# Foto ophalen van Telegram
+    photo = update.message.photo[-1]
+    file = await photo.get_file()
+    file_bytes = await file.download_as_bytearray()
+    original = Image.open(BytesIO(file_bytes)).convert("RGBA")
 
-        logo = Image.open(logo_path).convert("RGBA")
-        logo = logo.resize((original.width // 2, int(original.height // 10)))
+# Verklein en bijsnijd de afbeelding naar een vierkant van 1080x1080px
+    final_image = resize_and_crop(original, target_size=1080)
 
-        position = (
-            original.width - logo.width - 20,
-            original.height - logo.height - 250
+# Voeg logo toe na bijsnijden
+    logo = Image.open(LOGO_PATH).convert("RGBA")
+    logo = logo.resize((final_image.width // 2, int(final_image.height // 10)))
+
+    position = (
+        final_image.width - logo.width - 20,
+        final_image.height - logo.height - 250
+    )
+    final_image.paste(logo, position, logo)
+
+# Afbeelding opslaan en terugsturen naar de gebruiker
+    final_path = "final_image.png"
+    final_image.save(final_path)
+
+    with open(final_path, "rb") as f:
+        await context.bot.send_photo(
+            chat_id=update.effective_chat.id,
+            photo=f,
+            caption=f"📢 *Instagram Post Idee:*\n\n{ai_text}",
+            parse_mode="Markdown"
         )
-        original.paste(logo, position, logo)
 
-        final_path = os.path.join(get_user_path(user_id), "final_image.png")
-        original.save(final_path)
-
-        with open(final_path, "rb") as f:
-            await context.bot.send_photo(
-                chat_id=update.effective_chat.id,
-                photo=f,
-                caption=f"📢 *Instagram Post Idee:*\n\n{ai_text}",
-                parse_mode="Markdown"
-            )
 
         user_context[user_id] = {
             "image_path": final_path,
