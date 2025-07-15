@@ -230,7 +230,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Logo positioneren
         padding = 20
-        y_position = final_image.height - logo.height - 250
+        y_position = final_image.height - logo.height - 15
 
         if logo_position == "left":
             position = (padding, y_position)
