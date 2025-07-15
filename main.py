@@ -136,13 +136,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
 
         with open(final_path, "rb") as f:
-            await context.bot.send_photo(
-                chat_id=update.effective_chat.id,
-                photo=f,
-                caption=f"📢 *Instagram Post Idee:*
-\n{ai_text}",
-                parse_mode="Markdown"
-            )
+    await context.bot.send_photo(
+        chat_id=update.effective_chat.id,
+        photo=f,
+        caption=f"📢 *Instagram Post Idee:*\n\n{ai_text}",
+        parse_mode="Markdown"
+    )
+
 
         await update.message.reply_text(
             "🕒 Wanneer wil je dat deze post op Instagram geplaatst wordt?\n"
