@@ -173,12 +173,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Genereer het prompt voor AI afhankelijk van de aanwezigheid van promotionele woorden
     prompt = (
-        f"Schrijf een duidelijke Instagram-post in het Nederlands, uitsluitend op basis van deze beschrijving: '{promo_text}'. "
-        f"Voeg alleen hashtags toe die relevant zijn voor de gegeven tekst. "
-        f"Voeg géén promoties, prijzen, varianten of extra informatie toe die niet letterlijk in de beschrijving staat. "
-        f"Hou het aantrekkelijk en zonder verzonnen inhoud."
-        f"Zorg dat het aagrijpende marketing is."
-        f"Zorg voor plus minus 5 regels."
+        f"Schrijf een aantrekkelijke Instagram-post op basis van deze promotietekst: '{promo_text}'. "
+        f"Gebruik alleen de informatie uit de tekst — voeg geen prijzen, kortingen of promoties toe die niet expliciet genoemd zijn. "
+        f"Voeg relevante hashtags toe."
     )
 
     try:
