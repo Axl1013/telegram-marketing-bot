@@ -178,6 +178,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Voeg géén promoties, prijzen, varianten of extra informatie toe die niet letterlijk in de beschrijving staat. "
         f"Hou het aantrekkelijk en zonder verzonnen inhoud."
         f"Zorg dat het aagrijpende marketing is."
+        f"Zorg voor plus minus 5 regels."
     )
 
     try:
