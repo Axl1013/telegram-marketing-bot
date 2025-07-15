@@ -13,7 +13,7 @@ from io import BytesIO
 LOGO_PATH = "logo.png"
 
 # 🔑 API-sleutels invullen
-TELEGRAM_BOT_TOKEN = "JOUW_TELEGRAM_BOT_TOKEN"
+TELEGRAM_BOT_TOKEN = "7831292912:AAEUscTBpr0EGflvedXcEZbXrzXv72wlIJc"
 OPENAI_API_KEY = "JOUW_OPENAI_API_KEY"
 
 openai.api_key = OPENAI_API_KEY
