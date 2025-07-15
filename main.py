@@ -14,20 +14,28 @@ import json
 from datetime import datetime
 from telegram.ext import CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 from instagrapi import Client
+from instagrapi.exceptions import *
 import time
 from apscheduler.schedulers.background import BackgroundScheduler
 
-def test_post_image(cl):
-    image_path = "logo.png"  # Vervang dit met een echte afbeelding
-    caption = "Dit is een testpost via instagrapi"
-    
+
+def post_to_instagram(image_path, caption):
     try:
-        # Probeer een foto te uploaden
-        cl.photo_upload(image_path, caption)
-        print("Foto succesvol geüpload!")
+        cl = Client()
+        cl.load_settings("insta_session.json")
+        cl.login("marketingbotasmr", "Kimvg001")  # gebruik exact zoals bij sessie
+        result = cl.photo_upload(image_path, caption)
+        print("✅ Succesvol gepost op Instagram!")
+        print("📸 Post-ID:", result.dict().get("pk"))
+    except LoginRequired as e:
+        print("❌ Login vereist. Sessie ongeldig?")
+    except PhotoNotUpload as e:
+        print(f"❌ Fout bij uploaden foto: {e}")
     except Exception as e:
-        print(f"Er ging iets mis bij het uploaden van de foto: {e}")
+        print(f"❌ Algemene fout: {e}")
         
+post_to_instagram("logo.png", "🔥 Testpost via de bot")
+
 def login_and_save_session():
     cl = Client()
     cl.login("marketingbotasmr", "Kimvg001")
