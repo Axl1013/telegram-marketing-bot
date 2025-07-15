@@ -129,7 +129,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         position = (
             original.width - logo.width - 20,
-            original.height - logo.height - 50
+            original.height - logo.height - 250
         )
         original.paste(logo, position, logo)
 
