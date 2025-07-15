@@ -195,23 +195,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file_bytes = await file.download_as_bytearray()
         original = Image.open(BytesIO(file_bytes)).convert("RGBA")
 
-        # Verklein en bijsnijd de afbeelding naar een vierkant van 1080x1080px
+# Verklein en bijsnijd de afbeelding naar een vierkant van 1080x1080px
         final_image = resize_and_crop(original, target_size=1080)
 
-        # Voeg logo toe na het bijsnijden
+# Laad het logo en behoud de aspect ratio
         logo = Image.open(logo_path).convert("RGBA")
-        logo = logo.resize((final_image.width // 2, int(final_image.height // 10)))
 
-        # Positioneer het logo op de afbeelding
+# Stel de breedte van het logo in als de helft van de breedte van de afbeelding
+        logo_width = final_image.width // 2
+
+# Bereken de hoogte van het logo om de aspect ratio te behouden
+        logo_height = int(logo.height * (logo_width / logo.width))
+
+# Pas het logo aan met behoud van de aspect ratio
+        logo = logo.resize((logo_width, logo_height), Image.Resampling.LANCZOS)
+
+# Positioneer het logo op de afbeelding (onderaan, rechts)
         position = (
-            final_image.width - logo.width - 20,
-            final_image.height - logo.height - 250
+            final_image.width - logo.width - 20,  # 20px van de rechterrand
+            final_image.height - logo.height - 250  # 250px van de onderrand
         )
+
+# Plak het logo op de afbeelding
         final_image.paste(logo, position, logo)
 
-        # Afbeelding opslaan
+# Afbeelding opslaan
         final_path = "final_image.png"
         final_image.save(final_path)
+
 
         # Stuur de bewerkte afbeelding terug naar de gebruiker met AI gegenereerde caption
         with open(final_path, "rb") as f:
