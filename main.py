@@ -107,6 +107,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "chat_id": update.effective_chat.id
         }
 
+        # Verstuur de gegenereerde afbeelding en bijschrift terug naar de gebruiker
+        with open(final_path, "rb") as f:
+            await context.bot.send_photo(
+                chat_id=update.effective_chat.id,
+                photo=f,
+                caption=f"📢 *Instagram Post Idee:*\n\n{ai_text}",
+                parse_mode="Markdown"
+            )
+
         # Vraag de gebruiker om het tijdstip van de post
         await update.message.reply_text(
             "🕒 Wanneer wil je dat deze post op Instagram geplaatst wordt?\n"
@@ -117,6 +126,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logging.error(f"Fout: {str(e)}")
         await update.message.reply_text(f"❌ Er ging iets mis:\n{str(e)}")
+
 
 async def handle_schedule_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
