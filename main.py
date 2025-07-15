@@ -158,10 +158,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ensure_user_dirs(user_id)
     logo_path = get_logo_path(user_id)
 
+    # Controleer of er een bijschrift is toegevoegd aan de foto
     if not update.message.caption:
         await update.message.reply_text("⚠️ Stuur een foto met een promotietekst in het bijschrift.")
         return
 
+    # Controleer of het logo is geüpload
     if not os.path.exists(logo_path):
         await update.message.reply_text("⚠️ Je hebt nog geen logo geüpload. Stuur eerst je logo als foto met bijschrift: `logo`")
         return
@@ -169,6 +171,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     promo_text = update.message.caption
     price_keywords = ["korting", "aanbieding", "prijs", "actie", "promo"]
 
+    # Genereer het prompt voor AI afhankelijk van de aanwezigheid van promotionele woorden
     prompt = (
         f"Schrijf een aantrekkelijke Instagram-post in het Nederlands op basis van deze promotie: '{promo_text}'. "
         f"Voeg relevante hashtags toe en maak het promotioneel, inclusief een prijs of korting."
@@ -178,6 +181,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     try:
+        # AI-caption genereren
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
@@ -185,44 +189,47 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         ai_text = response.choices[0].message.content.strip()
 
-# Foto ophalen van Telegram
-    photo = update.message.photo[-1]
-    file = await photo.get_file()
-    file_bytes = await file.download_as_bytearray()
-    original = Image.open(BytesIO(file_bytes)).convert("RGBA")
+        # Foto ophalen van Telegram
+        photo = update.message.photo[-1]
+        file = await photo.get_file()
+        file_bytes = await file.download_as_bytearray()
+        original = Image.open(BytesIO(file_bytes)).convert("RGBA")
 
-# Verklein en bijsnijd de afbeelding naar een vierkant van 1080x1080px
-    final_image = resize_and_crop(original, target_size=1080)
+        # Verklein en bijsnijd de afbeelding naar een vierkant van 1080x1080px
+        final_image = resize_and_crop(original, target_size=1080)
 
-# Voeg logo toe na bijsnijden
-    logo = Image.open(LOGO_PATH).convert("RGBA")
-    logo = logo.resize((final_image.width // 2, int(final_image.height // 10)))
+        # Voeg logo toe na het bijsnijden
+        logo = Image.open(logo_path).convert("RGBA")
+        logo = logo.resize((final_image.width // 2, int(final_image.height // 10)))
 
-    position = (
-        final_image.width - logo.width - 20,
-        final_image.height - logo.height - 250
-    )
-    final_image.paste(logo, position, logo)
-
-# Afbeelding opslaan en terugsturen naar de gebruiker
-    final_path = "final_image.png"
-    final_image.save(final_path)
-
-    with open(final_path, "rb") as f:
-        await context.bot.send_photo(
-            chat_id=update.effective_chat.id,
-            photo=f,
-            caption=f"📢 *Instagram Post Idee:*\n\n{ai_text}",
-            parse_mode="Markdown"
+        # Positioneer het logo op de afbeelding
+        position = (
+            final_image.width - logo.width - 20,
+            final_image.height - logo.height - 250
         )
+        final_image.paste(logo, position, logo)
 
+        # Afbeelding opslaan
+        final_path = "final_image.png"
+        final_image.save(final_path)
 
+        # Stuur de bewerkte afbeelding terug naar de gebruiker met AI gegenereerde caption
+        with open(final_path, "rb") as f:
+            await context.bot.send_photo(
+                chat_id=update.effective_chat.id,
+                photo=f,
+                caption=f"📢 *Instagram Post Idee:*\n\n{ai_text}",
+                parse_mode="Markdown"
+            )
+
+        # Sla de gegevens op in de context om later te plannen
         user_context[user_id] = {
             "image_path": final_path,
             "caption": ai_text,
             "chat_id": update.effective_chat.id
         }
 
+        # Vraag de gebruiker om een tijdstip in te voeren voor het posten op Instagram
         await update.message.reply_text(
             "🕒 Wanneer wil je dat deze post op Instagram geplaatst wordt?\n"
             "Stuur een tijd in dit formaat: `DD-MM-YYYY HH:MM` (bijv. `17-07-2025 14:30`)",
