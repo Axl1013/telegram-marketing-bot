@@ -1,3 +1,4 @@
+import os
 import logging
 import nest_asyncio
 import asyncio
@@ -13,8 +14,8 @@ from io import BytesIO
 LOGO_PATH = "logo.png"
 
 # 🔑 API-sleutels invullen
-TELEGRAM_BOT_TOKEN = "7831292912:AAEUscTBpr0EGflvedXcEZbXrzXv72wlIJc"
-OPENAI_API_KEY = "JOUW_OPENAI_API_KEY"
+TELEGRAM_BOT_TOKEN = os.getenv("")
+OPENAI_API_KEY = os.getenv("JOUW_OPENAI_API_KEY")
 
 openai.api_key = OPENAI_API_KEY
 nest_asyncio.apply()
