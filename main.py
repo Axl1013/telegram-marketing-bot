@@ -17,6 +17,7 @@ from instagrapi import Client
 from instagrapi.exceptions import *
 from apscheduler.schedulers.background import BackgroundScheduler
 from telegram.ext import ConversationHandler
+from PIL import ImageEnhance
 
 # 🔑 Laad API-sleutels
 load_dotenv()
@@ -187,40 +188,63 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         ai_text = response.choices[0].message.content.strip()
 
-        # Foto ophalen van Telegram
-        photo = update.message.photo[-1]
-        file = await photo.get_file()
-        file_bytes = await file.download_as_bytearray()
-        original = Image.open(BytesIO(file_bytes)).convert("RGBA")
+    from PIL import ImageEnhance
+
+# Foto ophalen van Telegram
+    photo = update.message.photo[-1]
+    file = await photo.get_file()
+    file_bytes = await file.download_as_bytearray()
+    original = Image.open(BytesIO(file_bytes)).convert("RGBA")
 
 # Verklein en bijsnijd de afbeelding naar een vierkant van 1080x1080px
-        final_image = resize_and_crop(original, target_size=1080)
+    final_image = resize_and_crop(original, target_size=1080)
 
-# Laad het logo en behoud de aspect ratio
-        logo = Image.open(logo_path).convert("RGBA")
+# --- Automatische filters toepassen ---
+# Pas helderheid en contrast licht aan voor professionelere look
+    brightness_enhancer = ImageEnhance.Brightness(final_image)
+    final_image = brightness_enhancer.enhance(1.05)  # iets helderder
 
-# Stel de breedte van het logo in als 1/4 van de breedte van de afbeelding
-        logo_width = final_image.width // 4
+    contrast_enhancer = ImageEnhance.Contrast(final_image)
+    final_image = contrast_enhancer.enhance(1.10)  # iets meer contrast
 
-# Bereken de hoogte van het logo om de aspect ratio te behouden
-        logo_height = int(logo.height * (logo_width / logo.width))
+# --- Logo laden ---
+    logo = Image.open(logo_path).convert("RGBA")
+    logo_width = final_image.width // 4  # kleiner logo
+    logo_height = int(logo.height * (logo_width / logo.width))
+    logo = logo.resize((logo_width, logo_height))
 
-# Pas het logo aan met behoud van de aspect ratio
-        logo = logo.resize((logo_width, logo_height), Image.Resampling.LANCZOS)
+# --- Opties voor logo-plaatsing op basis van instructies in caption ---
+    caption_text = update.message.caption.lower()
+    logo_position = "right"  # standaard
+    transparent_logo = False
 
-# Positioneer het logo op de afbeelding (onderaan, rechts)
-        position = (
-            final_image.width - logo.width - 15,  # 20px van de rechterrand
-            final_image.height - logo.height - 10  # 250px van de onderrand
-        )
+    if "#logo-links" in caption_text:
+        logo_position = "left"
+    if "#logo-transparant" in caption_text:
+        transparent_logo = True
 
-# Plak het logo op de afbeelding
-        final_image.paste(logo, position, logo)
+# Logo eventueel transparanter maken
+    if transparent_logo:
+        logo = logo.copy()
+        alpha = logo.split()[3]
+        alpha = alpha.point(lambda p: p * 0.5)  # 50% transparant
+        logo.putalpha(alpha)
+
+# Logo positioneren
+    padding = 20
+    y_position = final_image.height - logo.height - 250
+
+    if logo_position == "left":
+        position = (padding, y_position)
+    else:
+        position = (final_image.width - logo.width - padding, y_position)
+
+# Logo toevoegen aan de afbeelding
+    final_image.paste(logo, position, logo)
 
 # Afbeelding opslaan
-        final_path = "final_image.png"
-        final_image.save(final_path)
-
+    final_path = "final_image.png"
+    final_image.save(final_path)
 
         # Stuur de bewerkte afbeelding terug naar de gebruiker met AI gegenereerde caption
         with open(final_path, "rb") as f:
