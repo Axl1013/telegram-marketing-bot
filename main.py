@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 import logging
 import nest_asyncio
 import asyncio
@@ -14,7 +15,9 @@ from io import BytesIO
 LOGO_PATH = "logo.png"
 
 # 🔑 API-sleutels invullen
-TELEGRAM_BOT_TOKEN = os.getenv("")
+load_dotenv()
+TELEGRAM_BOT_TOKEN = os.getenv("JOUW_TELEGRAM_BOT_TOKEN")
+load_dotenv()
 OPENAI_API_KEY = os.getenv("JOUW_OPENAI_API_KEY")
 
 openai.api_key = OPENAI_API_KEY
