@@ -74,21 +74,23 @@ def login_and_save_session(user_id):
 
 def get_instagram_client(user_id):
     cl = Client()
-    session_file = get_session_path(user_id)
-    if os.path.exists(session_file):
-        cl.load_settings(session_file)
+    session_path = get_session_path(user_id)
+
+    if os.path.exists(session_path):
+        cl.load_settings(session_path)
     else:
-        login_and_save_session(user_id)
-        cl.load_settings(session_file)
+        raise Exception("❌ Geen Instagram-sessie gevonden. Gebruik eerst /login.")
+
     return cl
 
 def post_on_instagram(image_path, caption, user_id):
     try:
         cl = get_instagram_client(user_id)
         cl.photo_upload(image_path, caption)
-        print(f"✅ Post geplaatst voor user {user_id}")
+        print(f"✅ Post geplaatst op Instagram voor gebruiker {user_id}")
     except Exception as e:
-        print(f"❌ Fout bij posten (user {user_id}): {e}")
+        print(f"❌ Fout bij posten voor gebruiker {user_id}: {e}")
+
 
 def schedule_post(image_path, caption, post_time, user_id):
     scheduled_time = datetime.strptime(post_time, "%d-%m-%Y %H:%M")
@@ -223,11 +225,53 @@ async def handle_logo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE)
     else:
         await handle_message(update, context)
 
+async def handle_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    try:
+        if len(context.args) != 2:
+            await update.message.reply_text("⚠️ Gebruik: `/login gebruikersnaam wachtwoord`", parse_mode="Markdown")
+            return
+
+        username, password = context.args
+        cl = Client()
+
+        await update.message.reply_text("🔐 Aan het inloggen...")
+
+        cl.login(username, password)
+
+        # Zorg voor directories en sla sessie op
+        ensure_user_dirs(user_id)
+        cl.dump_settings(get_session_path(user_id))
+
+        await update.message.reply_text("✅ Login geslaagd en sessie opgeslagen!")
+    except LoginRequired:
+        await update.message.reply_text("❌ Login vereist. Controleer je gegevens.")
+    except ChallengeRequired:
+        await update.message.reply_text("⚠️ Extra verificatie vereist (2FA of e-mail bevestiging).")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Fout bij inloggen: {str(e)}")
+
+        
+def get_session_path(user_id):
+    return f"sessions/session_{user_id}.json"
+
+def get_logo_path(user_id):
+    return f"logos/logo_{user_id}.png"
+
+def get_schedule_file(user_id):
+    return f"scheduled_posts_{user_id}.json"
+
+def ensure_user_dirs(user_id):
+    os.makedirs("sessions", exist_ok=True)
+    os.makedirs("logos", exist_ok=True)
+
 # 🚀 Start
 async def main():
     bot_app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     bot_app.add_handler(MessageHandler(filters.PHOTO, handle_logo_upload))
     bot_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_schedule_time))
+    bot_app.add_handler(CommandHandler("login", handle_login))
     logging.info("✅ Bot gestart...")
     await bot_app.run_polling()
 
