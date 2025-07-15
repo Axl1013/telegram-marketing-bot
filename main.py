@@ -68,9 +68,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Controleren of de tekst een prijs of promotie bevat (bijvoorbeeld door het zoeken naar woorden zoals "korting", "aanbieding", "prijs", etc.)
     price_keywords = ["korting", "aanbieding", "prijs", "actie", "promo"]
     if any(keyword in promo_text.lower() for keyword in price_keywords):
-        prompt = f"Schrijf een aantrekkelijke Instagram-post op basis van deze promotie: '{promo_text}'. Voeg relevante hashtags toe en maak het promotioneel, inclusief een prijs of korting."
+        prompt = f"Schrijf een aantrekkelijke Instagram-post in het Nederlands op basis van deze promotie: '{promo_text}'. Voeg relevante hashtags toe en maak het promotioneel, inclusief een prijs of korting."
     else:
-        prompt = f"Schrijf een aantrekkelijke Instagram-post op basis van deze promotie: '{promo_text}'. Voeg relevante hashtags toe, zonder een prijs of promotie toe te voegen."
+        prompt = f"Schrijf een aantrekkelijke Instagram-post in het Nederlands op basis van deze promotie: '{promo_text}'. Voeg relevante hashtags toe, zonder een prijs of promotie toe te voegen."
 
     try:
         # AI-caption genereren
@@ -126,6 +126,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logging.error(f"Fout: {str(e)}")
         await update.message.reply_text(f"❌ Er ging iets mis:\n{str(e)}")
+
 
 
 async def handle_schedule_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
