@@ -3,3 +3,4 @@ openai
 flask
 Pillow
 nest_asyncio
+echo "python-dateutil"
