@@ -16,6 +16,7 @@ from telegram.ext import CommandHandler
 from instagrapi import Client
 from instagrapi.exceptions import *
 from apscheduler.schedulers.background import BackgroundScheduler
+from telegram.ext import ConversationHandler
 
 # 🔑 Laad API-sleutels
 load_dotenv()
@@ -37,6 +38,10 @@ def run():
 def keep_alive():
     t = Thread(target=run)
     t.start()
+
+LOGIN_USERNAME, LOGIN_PASSWORD = range(2)
+login_data = {}  # tijdelijke opslag tijdens login
+
 
 # 🧠 Logging
 logging.basicConfig(level=logging.INFO)
@@ -65,23 +70,37 @@ def ensure_user_dirs(user_id):
     os.makedirs(get_user_path(user_id), exist_ok=True)
 
 # 📸 Instagram login en sessiebeheer
-def login_and_save_session(user_id):
+   def login_and_save_session(user_id, username, password):
     cl = Client()
-    # ⛔️ LET OP: dit is tijdelijk — vervang dit later met gebruikersinvoer
-    cl.login("marketingbotasmr", "Kimvg001")
+    cl.login(username, password)
     ensure_user_dirs(user_id)
     cl.dump_settings(get_session_path(user_id))
+    return cl
 
-def get_instagram_client(user_id):
+def get_instagram_client(user_id, username=None, password=None):
     cl = Client()
     session_path = get_session_path(user_id)
 
     if os.path.exists(session_path):
         cl.load_settings(session_path)
+        try:
+            cl.get_timeline_feed()  # om te testen of sessie geldig is
+        except LoginRequired:
+            if username and password:
+                cl.login(username, password)
+                cl.dump_settings(session_path)
+            else:
+                raise Exception("Sessie ongeldig en geen inloggegevens opgegeven.")
     else:
-        raise Exception("❌ Geen Instagram-sessie gevonden. Gebruik eerst /login.")
-
+        if username and password:
+            cl.login(username, password)
+            ensure_user_dirs(user_id)
+            cl.dump_settings(session_path)
+        else:
+            raise Exception("Geen sessie gevonden en geen inloggegevens beschikbaar.")
+    
     return cl
+
 
 def post_on_instagram(image_path, caption, user_id):
     try:
@@ -188,6 +207,43 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(f"Fout: {str(e)}")
         await update.message.reply_text(f"❌ Er ging iets mis:\n{str(e)}")
 
+async def start_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("📲 Wat is je Instagram gebruikersnaam?")
+    return LOGIN_USERNAME
+
+async def received_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    login_data[user_id] = {"username": update.message.text}
+    await update.message.reply_text("🔐 Wat is je Instagram wachtwoord?")
+    return LOGIN_PASSWORD
+
+async def received_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    login_data[user_id]["password"] = update.message.text
+
+    username = login_data[user_id]["username"]
+    password = login_data[user_id]["password"]
+
+    try:
+        cl = Client()
+        cl.login(username, password)
+
+        ensure_user_dirs(user_id)
+        cl.dump_settings(get_session_path(user_id))
+
+        await update.message.reply_text("✅ Je bent succesvol ingelogd op Instagram!")
+        del login_data[user_id]
+        return ConversationHandler.END
+
+    except Exception as e:
+        await update.message.reply_text(f"❌ Login mislukt: {str(e)}")
+        del login_data[user_id]
+        return ConversationHandler.END
+
+async def cancel_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("⛔ Login geannuleerd.")
+    return ConversationHandler.END
+
 async def handle_schedule_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in user_context:
@@ -274,6 +330,17 @@ async def main():
     bot_app.add_handler(CommandHandler("login", handle_login))
     logging.info("✅ Bot gestart...")
     await bot_app.run_polling()
+    login_handler = ConversationHandler(
+    entry_points=[CommandHandler("login", start_login)],
+    states={
+        LOGIN_USERNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, received_username)],
+        LOGIN_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, received_password)],
+    },
+    fallbacks=[CommandHandler("cancel", cancel_login)],
+)
+
+    bot_app.add_handler(login_handler)
+
 
 if __name__ == "__main__":
     keep_alive()
