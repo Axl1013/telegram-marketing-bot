@@ -13,6 +13,47 @@ from io import BytesIO
 import json
 from datetime import datetime
 from telegram.ext import CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
+from instagrapi import Client
+import time
+from apscheduler.schedulers.background import BackgroundScheduler
+
+def login_to_instagram():
+    cl = Client()
+
+    # Voer je gebruikersnaam en wachtwoord in
+    username = "marketingbotasmr"
+    password = "Kimvg001"
+
+    # Log in op Instagram
+    cl.login(username, password)
+    
+    return cl
+
+# Functie om een foto te posten
+def post_on_instagram(image_path, caption, cl):
+    try:
+        cl.photo_upload(image_path, caption)  # Upload de foto naar Instagram
+        print(f"Post succesvol gepost op Instagram met caption: {caption}")
+    except Exception as e:
+        print(f"Er ging iets mis bij het plaatsen van de post: {e}")
+
+# Functie om de post te plannen op de opgegeven tijd
+def schedule_post(image_path, caption, post_time):
+    # Zet de geplande tijd om naar een datetime object
+    scheduled_time = datetime.strptime(post_time, "%d-%m-%Y %H:%M")
+
+    # Bereken het aantal seconden tussen nu en de geplande tijd
+    time_diff = (scheduled_time - datetime.now()).total_seconds()
+
+    if time_diff > 0:
+        # Start de scheduler
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(post_on_instagram, 'date', run_date=scheduled_time, args=[image_path, caption, cl])
+        scheduler.start()
+        print(f"Post is gepland om {post_time}.")
+    else:
+        print(f"De opgegeven tijd ({post_time}) is in het verleden!")
+
 
 # 🖼️ Logo-bestand (zorg dat dit 'logo.png' in dezelfde folder staat)
 LOGO_PATH = "logo.png"
@@ -65,7 +106,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     promo_text = update.message.caption
-    # Controleren of de tekst een prijs of promotie bevat (bijvoorbeeld door het zoeken naar woorden zoals "korting", "aanbieding", "prijs", etc.)
     price_keywords = ["korting", "aanbieding", "prijs", "actie", "promo"]
     if any(keyword in promo_text.lower() for keyword in price_keywords):
         prompt = f"Schrijf een aantrekkelijke Instagram-post in het Nederlands op basis van deze promotie: '{promo_text}'. Voeg relevante hashtags toe en maak het promotioneel, inclusief een prijs of korting."
@@ -73,7 +113,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         prompt = f"Schrijf een aantrekkelijke Instagram-post in het Nederlands op basis van deze promotie: '{promo_text}'. Voeg relevante hashtags toe, zonder een prijs of promotie toe te voegen."
 
     try:
-        # AI-caption genereren
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
@@ -81,7 +120,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         ai_text = response.choices[0].message.content.strip()
 
-        # Foto verwerken
         photo = update.message.photo[-1]
         file = await photo.get_file()
         file_bytes = await file.download_as_bytearray()
@@ -99,7 +137,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         final_path = "final_image.png"
         original.save(final_path)
 
-        # Sla de info op in tijdelijke context
         user_id = update.effective_user.id
         user_context[user_id] = {
             "image_path": final_path,
@@ -107,7 +144,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "chat_id": update.effective_chat.id
         }
 
-        # Verstuur de gegenereerde afbeelding en bijschrift terug naar de gebruiker
         with open(final_path, "rb") as f:
             await context.bot.send_photo(
                 chat_id=update.effective_chat.id,
@@ -116,7 +152,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="Markdown"
             )
 
-        # Vraag de gebruiker om het tijdstip van de post
         await update.message.reply_text(
             "🕒 Wanneer wil je dat deze post op Instagram geplaatst wordt?\n"
             "Stuur een tijd in dit formaat: `DD-MM-YYYY HH:MM` (bijv. `17-07-2025 14:30`)",
@@ -126,7 +161,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logging.error(f"Fout: {str(e)}")
         await update.message.reply_text(f"❌ Er ging iets mis:\n{str(e)}")
+        
+# Functie om de post op het geplande tijdstip te plaatsen
+async def schedule_instagram_post(user_id, post_time):
+    image_path = user_context[user_id]["image_path"]
+    caption = user_context[user_id]["caption"]
 
+    # Login en maak een client object
+    cl = login_to_instagram()
+
+    # Plan de post
+    schedule_post(image_path, caption, post_time)
 
 
 async def handle_schedule_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
