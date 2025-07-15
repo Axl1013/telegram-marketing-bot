@@ -201,8 +201,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Laad het logo en behoud de aspect ratio
         logo = Image.open(logo_path).convert("RGBA")
 
-# Stel de breedte van het logo in als de helft van de breedte van de afbeelding
-        logo_width = final_image.width // 2
+# Stel de breedte van het logo in als 1/4 van de breedte van de afbeelding
+        logo_width = final_image.width // 4
 
 # Bereken de hoogte van het logo om de aspect ratio te behouden
         logo_height = int(logo.height * (logo_width / logo.width))
@@ -212,8 +212,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Positioneer het logo op de afbeelding (onderaan, rechts)
         position = (
-            final_image.width - logo.width - 20,  # 20px van de rechterrand
-            final_image.height - logo.height - 250  # 250px van de onderrand
+            final_image.width - logo.width - 15,  # 20px van de rechterrand
+            final_image.height - logo.height - 10  # 250px van de onderrand
         )
 
 # Plak het logo op de afbeelding
