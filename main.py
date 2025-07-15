@@ -18,6 +18,8 @@ from instagrapi.exceptions import *
 import time
 from apscheduler.schedulers.background import BackgroundScheduler
 
+if __name__ == "__main__":
+    login_and_save_session()
 
 def login_and_save_session():
     cl = Client()
