@@ -147,7 +147,7 @@ def resize_and_crop(image, target_size=1080):
 
     # Snijd het beeld bij en schaala naar de doelgrootte
     image_cropped = image.crop((left, top, right, bottom))
-    image_resized = image_cropped.resize((target_size, target_size), Image.ANTIALIAS)
+    image_resized = image_cropped.resize((target_size, target_size), Image.Resampling.LANCZOS)
 
     return image_resized
 
