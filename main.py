@@ -68,11 +68,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     promo_text = update.message.caption.strip()
-      prompt = (
+      prompt = 
         f"Schrijf een aantrekkelijke Instagram-post op basis van deze promotietekst: '{promo_text}'. "
         f"Gebruik alleen de informatie uit de tekst — voeg geen prijzen, kortingen of promoties toe die niet expliciet genoemd zijn. "
         f"Voeg relevante hashtags toe."
-    )
+    
 
     try:
         # AI-caption genereren
