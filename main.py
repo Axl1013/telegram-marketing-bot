@@ -188,63 +188,61 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         ai_text = response.choices[0].message.content.strip()
 
-    from PIL import ImageEnhance
-
 # Foto ophalen van Telegram
-    photo = update.message.photo[-1]
-    file = await photo.get_file()
-    file_bytes = await file.download_as_bytearray()
-    original = Image.open(BytesIO(file_bytes)).convert("RGBA")
+        photo = update.message.photo[-1]
+        file = await photo.get_file()
+        file_bytes = await file.download_as_bytearray()
+        original = Image.open(BytesIO(file_bytes)).convert("RGBA")
 
 # Verklein en bijsnijd de afbeelding naar een vierkant van 1080x1080px
-    final_image = resize_and_crop(original, target_size=1080)
+        final_image = resize_and_crop(original, target_size=1080)
 
 # --- Automatische filters toepassen ---
 # Pas helderheid en contrast licht aan voor professionelere look
-    brightness_enhancer = ImageEnhance.Brightness(final_image)
-    final_image = brightness_enhancer.enhance(1.05)  # iets helderder
+        brightness_enhancer = ImageEnhance.Brightness(final_image)
+        final_image = brightness_enhancer.enhance(1.05)  # iets helderder
 
-    contrast_enhancer = ImageEnhance.Contrast(final_image)
-    final_image = contrast_enhancer.enhance(1.10)  # iets meer contrast
+        contrast_enhancer = ImageEnhance.Contrast(final_image)
+        final_image = contrast_enhancer.enhance(1.10)  # iets meer contrast
 
 # --- Logo laden ---
-    logo = Image.open(logo_path).convert("RGBA")
-    logo_width = final_image.width // 4  # kleiner logo
-    logo_height = int(logo.height * (logo_width / logo.width))
-    logo = logo.resize((logo_width, logo_height))
+        logo = Image.open(logo_path).convert("RGBA")
+        logo_width = final_image.width // 4  # kleiner logo
+        logo_height = int(logo.height * (logo_width / logo.width))
+        logo = logo.resize((logo_width, logo_height))
 
 # --- Opties voor logo-plaatsing op basis van instructies in caption ---
-    caption_text = update.message.caption.lower()
-    logo_position = "right"  # standaard
-    transparent_logo = False
+        caption_text = update.message.caption.lower()
+        logo_position = "right"  # standaard
+        transparent_logo = False
 
-    if "#logo-links" in caption_text:
-        logo_position = "left"
-    if "#logo-transparant" in caption_text:
-        transparent_logo = True
+        if "#logo-links" in caption_text:
+            logo_position = "left"
+        if "#logo-transparant" in caption_text:
+            transparent_logo = True
 
 # Logo eventueel transparanter maken
-    if transparent_logo:
-        logo = logo.copy()
-        alpha = logo.split()[3]
-        alpha = alpha.point(lambda p: p * 0.5)  # 50% transparant
-        logo.putalpha(alpha)
+        if transparent_logo:
+            logo = logo.copy()
+            alpha = logo.split()[3]
+            alpha = alpha.point(lambda p: p * 0.5)  # 50% transparant
+            logo.putalpha(alpha)
 
 # Logo positioneren
-    padding = 20
-    y_position = final_image.height - logo.height - 250
+        padding = 20
+        y_position = final_image.height - logo.height - 250
 
-    if logo_position == "left":
-        position = (padding, y_position)
-    else:
-        position = (final_image.width - logo.width - padding, y_position)
+        if logo_position == "left":
+            position = (padding, y_position)
+        else:
+            position = (final_image.width - logo.width - padding, y_position)
 
 # Logo toevoegen aan de afbeelding
-    final_image.paste(logo, position, logo)
+        final_image.paste(logo, position, logo)
 
 # Afbeelding opslaan
-    final_path = "final_image.png"
-    final_image.save(final_path)
+        final_path = "final_image.png"
+        final_image.save(final_path)
 
         # Stuur de bewerkte afbeelding terug naar de gebruiker met AI gegenereerde caption
         with open(final_path, "rb") as f:
