@@ -5,6 +5,7 @@ from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 from dateutil import parser
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import nest_asyncio
 
 # Functie om de gebruiker om een datum en tijd te vragen
 async def ask_datetime(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -97,6 +98,9 @@ async def main():
     bot_app.add_handler(MessageHandler(filters.TEXT, process_datetime))  # Handler voor het invoeren van de datum en tijd
     logging.info("✅ Bot gestart...")
     await bot_app.run_polling()
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    keep_alive()
+    nest_asyncio.apply()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+
