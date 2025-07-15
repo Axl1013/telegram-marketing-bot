@@ -17,6 +17,16 @@ from instagrapi import Client
 import time
 from apscheduler.schedulers.background import BackgroundScheduler
 
+def login_and_save_session():
+    cl = Client()
+    cl.login("marketingbotasmr", "Kimvg001")
+    cl.dump_settings("insta_session.json")  # sla sessie op
+
+def load_saved_session():
+    cl = Client()
+    cl.load_settings("insta_session.json")
+    cl.login("jouw_gebruikersnaam", "jouw_wachtwoord")
+    return cl
 def login_to_instagram():
     cl = Client()
 
