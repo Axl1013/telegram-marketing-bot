@@ -70,12 +70,11 @@ def ensure_user_dirs(user_id):
     os.makedirs(get_user_path(user_id), exist_ok=True)
 
 # 📸 Instagram login en sessiebeheer
-   def login_and_save_session(user_id, username, password):
+def login_and_save_session(user_id, username, password):
     cl = Client()
     cl.login(username, password)
     ensure_user_dirs(user_id)
     cl.dump_settings(get_session_path(user_id))
-    return cl
 
 def get_instagram_client(user_id, username=None, password=None):
     cl = Client()
