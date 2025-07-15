@@ -172,11 +172,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     price_keywords = ["korting", "aanbieding", "prijs", "actie", "promo"]
 
     # Genereer het prompt voor AI afhankelijk van de aanwezigheid van promotionele woorden
-    prompt = (
-        f"Schrijf een aantrekkelijke Instagram-post in het Nederlands, alleen op basis van deze specifieke promotietekst: '{promo_text}'. "
-        f"Voeg relevante hashtags toe, maar breid het onderwerp niet uit of voeg geen extra producten of varianten toe. "
-        f"Maak het kort, duidelijk en promotioneel, met eventueel een prijs of korting als die vermeld is."
-    )
+        prompt = (
+            f"Schrijf een duidelijke Instagram-post in het Nederlands, uitsluitend op basis van deze beschrijving: '{promo_text}'. "
+            f"Voeg alleen hashtags toe die relevant zijn voor de gegeven tekst. "
+            f"Voeg géén promoties, prijzen, varianten of extra informatie toe die niet letterlijk in de beschrijving staat. "
+            f"Hou het aantrekkelijk en zonder verzonnen inhoud."
+            f"Zorg dat het aagrijpende marketing is."
+        )
 
     try:
         # AI-caption genereren
