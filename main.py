@@ -128,8 +128,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logo = logo.resize((original.width // 2, int(original.height // 10)))
 
         position = (
-            original.width - logo.width - 10,
-            original.height - logo.height - 15
+            original.width - logo.width - 20,
+            original.height - logo.height - 50
         )
         original.paste(logo, position, logo)
 
