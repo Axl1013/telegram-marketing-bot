@@ -101,13 +101,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     promo_text = update.message.caption
-    keywords = ["korting", "aanbieding", "prijs", "actie", "promo"]
-    if any(word in promo_text.lower() for word in keywords):
+    price_keywords = ["korting", "aanbieding", "prijs", "actie", "promo"]
+
+    if any(keyword in promo_text.lower() for keyword in price_keywords):
         prompt = f"Schrijf een aantrekkelijke Instagram-post in het Nederlands op basis van deze promotie: '{promo_text}'. Voeg relevante hashtags toe en maak het promotioneel, inclusief een prijs of korting."
     else:
         prompt = f"Schrijf een aantrekkelijke Instagram-post in het Nederlands op basis van deze promotie: '{promo_text}'. Voeg relevante hashtags toe, zonder een prijs of promotie toe te voegen."
 
     try:
+        # AI-caption genereren
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
@@ -115,19 +117,36 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         ai_text = response.choices[0].message.content.strip()
 
+        # Foto ophalen van Telegram
         photo = update.message.photo[-1]
         file = await photo.get_file()
         file_bytes = await file.download_as_bytearray()
         original = Image.open(BytesIO(file_bytes)).convert("RGBA")
 
+        # Logo laden en toevoegen
         logo = Image.open(LOGO_PATH).convert("RGBA")
         logo = logo.resize((original.width // 2, int(original.height // 10)))
-        position = (original.width - logo.width - 10, original.height - logo.height - 10)
+
+        position = (
+            original.width - logo.width - 10,
+            original.height - logo.height - 10
+        )
         original.paste(logo, position, logo)
 
+        # Afbeelding opslaan
         final_path = "final_image.png"
         original.save(final_path)
 
+        # AI-caption + afbeelding terugsturen naar gebruiker
+        with open(final_path, "rb") as f:
+            await context.bot.send_photo(
+                chat_id=update.effective_chat.id,
+                photo=f,
+                caption=f"📢 *Instagram Post Idee:*\n\n{ai_text}",
+                parse_mode="Markdown"
+            )
+
+        # Opslaan in context om later te plannen
         user_id = update.effective_user.id
         user_context[user_id] = {
             "image_path": final_path,
@@ -135,15 +154,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "chat_id": update.effective_chat.id
         }
 
-        with open(final_path, "rb") as f:
-    await context.bot.send_photo(
-        chat_id=update.effective_chat.id,
-        photo=f,
-        caption=f"📢 *Instagram Post Idee:*\n\n{ai_text}",
-        parse_mode="Markdown"
-    )
-
-
+        # Vraag tijdstip voor Instagram post
         await update.message.reply_text(
             "🕒 Wanneer wil je dat deze post op Instagram geplaatst wordt?\n"
             "Stuur een tijd in dit formaat: `DD-MM-YYYY HH:MM` (bijv. `17-07-2025 14:30`)",
