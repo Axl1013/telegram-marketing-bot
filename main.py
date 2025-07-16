@@ -170,7 +170,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ Je hebt nog geen logo geüpload. Stuur eerst je logo als foto met bijschrift: `logo`")
         return
 
-    promo_text = update.message.caption
+    # Haal caption op en verwijder speciale logo-hashtags
+    raw_caption = update.message.caption
+    keywords_to_ignore = ["#logo-links", "#logo-rechts", "#logo-transparant"]
+    promo_text = " ".join(word for word in raw_caption.split() if word.lower() not in keywords_to_ignore)
+
     price_keywords = ["korting", "aanbieding", "prijs", "actie", "promo"]
 
     # Genereer het prompt voor AI afhankelijk van de aanwezigheid van promotionele woorden
@@ -280,8 +284,8 @@ async def info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🏷️ *2. Voeg een logo toe (eenmalig):*\n"
         "– Stuur je logo als foto met bijschrift `logo`\n\n"
         "🔀 *3. Pas logo-positie aan:*\n"
-        "– Stuur `/logo_links` of `/logo_rechts` om het logo links of rechts onderaan te zetten\n"
-        "– Stuur `/logo_transparant` om het logo transparant te maken\n\n"
+        "– Zet in bescrijving `#logo-links` of `#logo-rechts` om het logo links of rechts onderaan te zetten\n"
+        "– Zet in beschrijving `#logo-transparant` om het logo transparant te maken\n\n"
         "🔐 *4. Login met jouw Instagram-account:*\n"
         "– Stuur `/login gebruikersnaam wachtwoord`\n\n"
         "🕒 *5. Plan je post:*\n"
